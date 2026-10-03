@@ -6,8 +6,10 @@ import mongoose from 'mongoose';
 import connectDB from './config/db.js';
 import itemRoutes from './routes/itemRoutes.js';
 import lostItemRoutes from './routes/lostItemRoutes.js';
+import foundItemRoutes from './routes/foundItemRoutes.js';
 import Item from './models/Item.js';
 import LostItem from './models/LostItem.js';
+import FoundItem from './models/FoundItem.js';
 import { notFound, errorHandler } from './middleware/errorHandler.js';
 
 // Load environment variables from .env
@@ -23,8 +25,8 @@ app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:3000',
   credentials: true,
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
@@ -92,6 +94,7 @@ app.get('/api/db-verify', async (req, res) => {
 // API Routes
 app.use('/api/items', itemRoutes);
 app.use('/api/lost-items', lostItemRoutes);
+app.use('/api/found-items', foundItemRoutes);
 
 // Error Handling Middlewares
 app.use(notFound);

@@ -356,65 +356,223 @@ export const ReportFoundView = ({ onNavigate }) => {
   const [formData, setFormData] = useState({
     title: '',
     category: 'Electronics',
-    location: '',
-    custody: 'Library Front Desk',
-    finder: '',
     description: '',
+    brand: '',
+    color: '',
+    dateFound: new Date().toISOString().split('T')[0],
+    timeFound: '',
+    locationFound: '',
+    custody: 'Campus Safety / Circulation Desk',
+    imageUrl: '',
   });
-  const [submitted, setSubmitted] = useState(false);
+
+  const [imagePreview, setImagePreview] = useState(null);
+  const [selectedFileName, setSelectedFileName] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [successData, setSuccessData] = useState(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (error) setError(null);
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image file size exceeds 5MB limit. Please choose a smaller image.');
+        return;
+      }
+      setSelectedFileName(file.name);
+      const reader = new FileReader();
+      reader.onload = (loadEvent) => {
+        setImagePreview(loadEvent.target.result);
+        setFormData((prev) => ({ ...prev, imageUrl: loadEvent.target.result }));
+      };
+      reader.readAsDataURL(file);
+      if (error) setError(null);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setImagePreview(null);
+    setSelectedFileName(null);
+    setFormData((prev) => ({ ...prev, imageUrl: '' }));
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      handleFileChange({ target: { files: [file] } });
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.title.trim()) return;
-    setSubmitted(true);
+    if (!formData.title.trim()) {
+      setError('Please provide an item name.');
+      return;
+    }
+    if (!formData.locationFound.trim()) {
+      setError('Please specify where the item was discovered.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    // Mock asynchronous submission simulation
+    setTimeout(() => {
+      const mockResult = {
+        _id: `FND-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+        title: formData.title.trim(),
+        category: formData.category,
+        brand: formData.brand.trim() || 'Unknown / Unbranded',
+        color: formData.color.trim() || 'Not specified',
+        dateFound: formData.dateFound || new Date().toISOString().split('T')[0],
+        timeFound: formData.timeFound || 'Approx. Now',
+        locationFound: formData.locationFound.trim(),
+        custody: formData.custody ? formData.custody.trim() : 'Campus Holding Desk',
+        description: formData.description.trim(),
+        imageUrl: imagePreview || formData.imageUrl || '',
+        status: 'found',
+        createdAt: new Date().toISOString(),
+      };
+
+      setSuccessData(mockResult);
+      setLoading(false);
+    }, 750);
   };
 
   const handleReset = () => {
     setFormData({
       title: '',
       category: 'Electronics',
-      location: '',
-      custody: 'Library Front Desk',
-      finder: '',
       description: '',
+      brand: '',
+      color: '',
+      dateFound: new Date().toISOString().split('T')[0],
+      timeFound: '',
+      locationFound: '',
+      custody: 'Campus Safety / Circulation Desk',
+      imageUrl: '',
     });
-    setSubmitted(false);
+    setImagePreview(null);
+    setSelectedFileName(null);
+    setError(null);
+    setSuccessData(null);
   };
 
   return (
     <div className="view-wrapper">
-      <div className="view-placeholder-card report-form-card">
+      <div className="view-placeholder-card report-form-card found-form-card">
         <div className="view-placeholder-icon" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
           🎁
         </div>
-        <h3>Report Found Item Form</h3>
-        <p>Log a found item, drop-off location or current custody details, and photos.</p>
+        <h3>Report Found Item</h3>
+        <p>Log a discovered belonging to notify owners and coordinate handoff through campus custody.</p>
 
-        {submitted ? (
+        {/* Error Notification Alert */}
+        {error && (
+          <div className="form-error-banner" role="alert">
+            <span className="error-icon">⚠️</span>
+            <div className="error-text-wrap">
+              <strong>Validation Error</strong>
+              <span>{error}</span>
+            </div>
+            <button
+              type="button"
+              className="btn-error-dismiss"
+              onClick={() => setError(null)}
+              aria-label="Dismiss error"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Success State View */}
+        {successData ? (
           <div className="form-success-banner found-success">
             <span className="success-icon">✨</span>
             <h4>Found Item Successfully Logged!</h4>
             <p>
-              Thank you for helping reunite campus members with their property. <strong>"{formData.title}"</strong> is now cataloged and queued for automatic similarity matching.
+              Thank you for helping reunite campus members with their property. <strong>"{successData.title}"</strong> is now cataloged and queued for automatic similarity matching.
             </p>
+
+            {/* Stored Document Reference Box */}
+            <div className="success-meta-card">
+              <div className="meta-card-row">
+                <span className="meta-card-label">Reference ID:</span>
+                <code className="meta-card-code" style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.12)' }}>
+                  #{successData._id}
+                </code>
+              </div>
+              <div className="meta-card-row">
+                <span className="meta-card-label">Category:</span>
+                <span className="meta-card-val">{successData.category}</span>
+              </div>
+              <div className="meta-card-row">
+                <span className="meta-card-label">Brand & Color:</span>
+                <span className="meta-card-val">{successData.brand} • {successData.color}</span>
+              </div>
+              <div className="meta-card-row">
+                <span className="meta-card-label">Discovered At:</span>
+                <span className="meta-card-val">{successData.locationFound}</span>
+              </div>
+              <div className="meta-card-row">
+                <span className="meta-card-label">Date & Time Found:</span>
+                <span className="meta-card-val">{successData.dateFound} {successData.timeFound ? `at ${successData.timeFound}` : ''}</span>
+              </div>
+              <div className="meta-card-row">
+                <span className="meta-card-label">Current Custody:</span>
+                <span className="meta-card-val highlight-custody">{successData.custody}</span>
+              </div>
+              <div className="meta-card-row">
+                <span className="meta-card-label">Status:</span>
+                <span className="badge-pill pill-success">{successData.status?.toUpperCase() || 'FOUND'}</span>
+              </div>
+              {successData.imageUrl && (
+                <div className="success-image-thumb">
+                  <span className="meta-card-label">Uploaded Image:</span>
+                  <img src={successData.imageUrl} alt={successData.title} />
+                </div>
+              )}
+            </div>
+
             <div className="success-action-buttons">
               <button className="btn-dash-primary found-accent" onClick={handleReset}>
                 + Log Another Found Item
               </button>
               {onNavigate && (
-                <button className="btn-dash-secondary" onClick={() => onNavigate('dashboard')}>
-                  Return to Dashboard
-                </button>
+                <>
+                  <button className="btn-dash-secondary" onClick={() => onNavigate('dashboard')}>
+                    Back to Dashboard
+                  </button>
+                  <button className="btn-dash-secondary" onClick={() => onNavigate('view-reports')}>
+                    Browse All Reports
+                  </button>
+                </>
               )}
             </div>
           </div>
         ) : (
           <form className="placeholder-form-grid" onSubmit={handleSubmit}>
+            {/* 1. Item Name */}
             <div className="form-field-group">
               <label htmlFor="found-item-title" className="form-label">
                 Found Item Name <span className="required-star">*</span>
@@ -424,18 +582,20 @@ export const ReportFoundView = ({ onNavigate }) => {
                 name="title"
                 type="text"
                 className="input-field"
-                placeholder="e.g. Wireless AirPods Case, Brown Leather Wallet, Toyota Key Fob..."
+                placeholder="e.g. Wireless AirPods Case, Toyota Key Fob, Brown Leather Wallet..."
                 value={formData.title}
                 onChange={handleChange}
+                disabled={loading}
                 required
                 autoFocus
               />
             </div>
 
+            {/* 2. Category & Brand */}
             <div className="form-row-2col">
               <div className="form-field-group">
                 <label htmlFor="found-item-category" className="form-label">
-                  Category
+                  Category <span className="required-star">*</span>
                 </label>
                 <select
                   id="found-item-category"
@@ -443,6 +603,7 @@ export const ReportFoundView = ({ onNavigate }) => {
                   className="input-field select-field"
                   value={formData.category}
                   onChange={handleChange}
+                  disabled={loading}
                 >
                   <option value="Electronics">Electronics (Laptop, Phone, Tablet)</option>
                   <option value="Personal Belongings">Personal Belongings (Wallet, Bag, ID)</option>
@@ -450,84 +611,225 @@ export const ReportFoundView = ({ onNavigate }) => {
                   <option value="Keys">Keys & Access Cards</option>
                   <option value="Accessories">Accessories & Jewelry</option>
                   <option value="Books/Stationery">Books & Stationery</option>
+                  <option value="Clothing/Apparel">Clothing & Apparel</option>
                   <option value="Other">Other</option>
                 </select>
               </div>
 
               <div className="form-field-group">
+                <label htmlFor="found-item-brand" className="form-label">
+                  Brand / Manufacturer
+                </label>
+                <input
+                  id="found-item-brand"
+                  name="brand"
+                  type="text"
+                  className="input-field"
+                  placeholder="e.g. Apple, Sony, Hydroflask, Toyota, Fossil..."
+                  value={formData.brand}
+                  onChange={handleChange}
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            {/* 3. Color & Location Found */}
+            <div className="form-row-2col">
+              <div className="form-field-group">
+                <label htmlFor="found-item-color" className="form-label">
+                  Primary Color / Finish
+                </label>
+                <input
+                  id="found-item-color"
+                  name="color"
+                  type="text"
+                  className="input-field"
+                  placeholder="e.g. Space Gray, Matte Black, Silver, Navy Blue..."
+                  value={formData.color}
+                  onChange={handleChange}
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="form-field-group">
                 <label htmlFor="found-item-location" className="form-label">
-                  Discovered Location <span className="required-star">*</span>
+                  Location Found / Campus Landmark <span className="required-star">*</span>
                 </label>
                 <input
                   id="found-item-location"
-                  name="location"
+                  name="locationFound"
                   type="text"
                   className="input-field"
                   placeholder="e.g. Room 204 Humanities Hall, West Deck Elevator..."
-                  value={formData.location}
+                  value={formData.locationFound}
                   onChange={handleChange}
+                  disabled={loading}
                   required
                 />
               </div>
             </div>
 
+            {/* 4. Date Found & Time Found */}
             <div className="form-row-2col">
               <div className="form-field-group">
-                <label htmlFor="found-item-custody" className="form-label">
-                  Current Holding Location / Custody Desk <span className="required-star">*</span>
+                <label htmlFor="found-item-date" className="form-label">
+                  Date Found
                 </label>
                 <input
-                  id="found-item-custody"
-                  name="custody"
-                  type="text"
+                  id="found-item-date"
+                  name="dateFound"
+                  type="date"
                   className="input-field"
-                  placeholder="e.g. Campus Safety Dispatch, Library Circulation Desk..."
-                  value={formData.custody}
+                  value={formData.dateFound}
                   onChange={handleChange}
-                  required
+                  disabled={loading}
                 />
               </div>
 
               <div className="form-field-group">
-                <label htmlFor="found-item-finder" className="form-label">
-                  Logged By / Finder Name
+                <label htmlFor="found-item-time" className="form-label">
+                  Time Found
                 </label>
                 <input
-                  id="found-item-finder"
-                  name="finder"
-                  type="text"
+                  id="found-item-time"
+                  name="timeFound"
+                  type="time"
                   className="input-field"
-                  placeholder="e.g. Officer Miller, Front Desk Staff, Alex R..."
-                  value={formData.finder}
+                  value={formData.timeFound}
                   onChange={handleChange}
+                  disabled={loading}
                 />
               </div>
             </div>
 
+            {/* 5. Current Custody / Holding Location */}
+            <div className="form-field-group">
+              <label htmlFor="found-item-custody" className="form-label">
+                Current Holding Location / Custody Desk
+              </label>
+              <input
+                id="found-item-custody"
+                name="custody"
+                type="text"
+                className="input-field"
+                placeholder="e.g. Campus Safety Dispatch, Library Circulation Desk, Student Union Info..."
+                value={formData.custody}
+                onChange={handleChange}
+                disabled={loading}
+              />
+            </div>
+
+            {/* 6. Detailed Description */}
             <div className="form-field-group">
               <label htmlFor="found-item-description" className="form-label">
-                Detailed Condition & Visual Description
+                Detailed Description & Distinguishing Features
               </label>
               <textarea
                 id="found-item-description"
                 name="description"
                 className="input-field textarea-field"
-                placeholder="Distinctive marks, case color, brand, condition, or storage locker reference..."
+                placeholder="Case markings, condition, serial/model number, stickers, or current storage locker details..."
                 rows="4"
                 value={formData.description}
                 onChange={handleChange}
+                disabled={loading}
               />
             </div>
 
+            {/* 7. Image Upload / Photo Attachment */}
+            <div className="form-field-group">
+              <label className="form-label">
+                Item Image / Photo <span className="label-optional">(Optional)</span>
+              </label>
+
+              {/* Drag and Drop Upload Zone */}
+              <div
+                className={`file-upload-zone ${isDragging ? 'dragging' : ''}`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                <input
+                  id="found-item-file"
+                  type="file"
+                  accept="image/*"
+                  className="file-input-hidden"
+                  onChange={handleFileChange}
+                  disabled={loading}
+                />
+                <span className="dropzone-icon">📷</span>
+                <span className="dropzone-primary-text">
+                  Drop a photo here, or <strong style={{ color: '#10b981' }}>browse files</strong>
+                </span>
+                <span className="dropzone-subtext">Supports PNG, JPG, WEBP up to 5MB</span>
+              </div>
+
+              {/* Selected File & Image Preview */}
+              {imagePreview && (
+                <div className="file-selected-card">
+                  <div className="file-selected-info">
+                    <img
+                      src={imagePreview}
+                      alt="Found item preview"
+                      className="image-preview-thumb-mini"
+                    />
+                    <span className="file-selected-name">
+                      {selectedFileName || 'Attached Image Preview'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-remove-file"
+                    onClick={handleRemoveImage}
+                    disabled={loading}
+                  >
+                    ✕ Remove
+                  </button>
+                </div>
+              )}
+
+              {/* Alternative Image URL Input */}
+              <div className="upload-or-divider">
+                <span>or paste image URL</span>
+              </div>
+
+              <input
+                id="found-item-image-url"
+                name="imageUrl"
+                type="url"
+                className="input-field"
+                placeholder="https://images.unsplash.com/... or web image link"
+                value={formData.imageUrl}
+                onChange={(e) => {
+                  handleChange(e);
+                  setImagePreview(e.target.value);
+                }}
+                disabled={loading}
+              />
+            </div>
+
+            {/* Submit Action Row */}
             <div className="form-submit-row">
-              <button type="submit" className="btn-dash-primary found-accent btn-form-submit">
-                Submit Found Item Report
+              <button
+                type="submit"
+                className="btn-dash-primary found-accent btn-form-submit"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <span className="btn-spinner" />
+                    <span>Cataloging Found Item...</span>
+                  </>
+                ) : (
+                  <span>Submit Found Item Report</span>
+                )}
               </button>
               {onNavigate && (
                 <button
                   type="button"
                   className="btn-dash-secondary"
                   onClick={() => onNavigate('dashboard')}
+                  disabled={loading}
                 >
                   Cancel
                 </button>
